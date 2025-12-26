@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: altai-cities
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: altai_cities_db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+databases:
+  - name: altai_cities_db
+    plan: free
+    databaseName: altai_cities
+    user: altai_cities_user
