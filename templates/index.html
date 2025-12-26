@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <!-- Панель выбора города -->
+    <div class="col-md-3">
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-geo-alt"></i> Города Алтайского края
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for city in cities %}
+                    <a href="{{ url_for('index', city_id=city.id) }}"
+                       class="list-group-item list-group-item-action {% if current_city and city.id == current_city.id %}active{% endif %}">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <span>{{ city.name }}</span>
+                            <span class="badge bg-primary rounded-pill">
+                                {{ city.points|selectattr('status', 'equalto', 'approved')|list|length }}
+                            </span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Категории</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2" id="category-filter">
+                    <button class="btn btn-sm btn-outline-primary category-btn active" data-category="all">
+                        Все
+                    </button>
+                    {% for category in categories %}
+                    <button class="btn btn-sm btn-outline-primary category-btn" data-category="{{ category }}">
+                        {{ category }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Основной контент -->
+    <div class="col-md-9">
+        {% if current_city %}
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="mb-0">
+                        <i class="bi bi-map"></i> {{ current_city.name }}
+                    </h4>
+                    <small class="opacity-75">Карта предложений жителей</small>
+                </div>
+                <div>
+                    {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('add_point') }}" class="btn btn-light btn-sm">
+                        <i class="bi bi-plus-circle"></i> Добавить идею
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div id="map" style="height: 500px;"></div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Последние идеи для {{ current_city.name }}</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if points %}
+                        <div class="list-group">
+                            {% for point in points %}
+                            <a href="{{ url_for('point_detail', point_id=point.id) }}"
+                               class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ point.title }}</h6>
+                                    <small>{{ point.created_at.strftime('%d.%m.%Y') }}</small>
+                                </div>
+                                <p class="mb-1 small text-truncate">{{ point.description[:100] }}...</p>
+                                <small>
+                                    <span class="badge bg-primary">{{ point.category }}</span>
+                                    <span class="badge bg-secondary">{{ point.author.username }}</span>
+                                    <span class="badge bg-success">{{ point.votes|selectattr('vote_type', 'equalto', 'upvote')|list|length }} 👍</span>
+                                </small>
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-lightbulb display-1 text-muted"></i>
+                            <h4 class="mt-3">Пока нет предложений</h4>
+                            <p class="text-muted">Будьте первым, кто предложит идею для улучшения {{ current_city.name }}!</p>
+                            {% if current_user.is_authenticated %}
+                            <a href="{{ url_for('add_point') }}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Добавить первую идею
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('login') }}" class="btn btn-primary">
+                                Войдите, чтобы предложить идею
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card mb-3">
+                    <div class="card-body text-center">
+                        <h5>Вместе развиваем {{ current_city.name }}!</h5>
+                        <p class="text-muted small">Ваши идеи делают город лучше</p>
+                        {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('add_point') }}" class="btn btn-primary w-100">
+                            <i class="bi bi-plus-circle"></i> Предложить идею
+                        </a>
+                        {% else %}
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('login') }}" class="btn btn-primary">
+                                Войти в систему
+                            </a>
+                            <a href="{{ url_for('register') }}" class="btn btn-outline-primary">
+                                Зарегистрироваться
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">Статистика города</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="display-6">{{ points|length }}</div>
+                                <small class="text-muted">Идей</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="display-6">{{ cities|length }}</div>
+                                <small class="text-muted">Городов в системе</small>
+                            </div>
+                        </div>
+                        <hr>
+                        <p class="small text-muted mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            Все предложения проходят модерацию перед публикацией
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-geo-alt display-1 text-muted"></i>
+            <h2 class="mt-3">Добро пожаловать!</h2>
+            <p class="lead">Выберите город из списка слева, чтобы увидеть предложения жителей</p>
+            <p class="text-muted">Платформа для сбора идей по развитию городов Алтайского края</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let map;
+let markers = [];
+let currentCategory = 'all';
+
+function initMap() {
+    {% if current_city %}
+    // Координаты текущего города
+    const cityCenter = [{{ current_city.latitude }}, {{ current_city.longitude }}];
+
+    // Создаем карту
+    map = L.map('map').setView(cityCenter, {{ current_city.zoom_level }});
+
+    // Добавляем слой OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18
+    }).addTo(map);
+
+    // Загружаем точки города
+    loadPoints({{ current_city.id }});
+    {% endif %}
+
+    // Добавляем обработчики для фильтров категорий
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentCategory = this.dataset.category;
+            filterMarkers();
+        });
+    });
+}
+
+function loadPoints(cityId) {
+    fetch(`/api/points/${cityId}`)
+        .then(response => response.json())
+        .then(points => {
+            // Очищаем старые маркеры
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            // Добавляем новые маркеры
+            points.forEach(point => {
+                // Цвет маркера в зависимости от категории
+                const categoryColors = {
+                    'спорт': 'green',
+                    'культура': 'purple',
+                    'детский досуг': 'orange',
+                    'экология': 'darkgreen',
+                    'транспорт': 'blue',
+                    'благоустройство': 'cadetblue',
+                    'безопасность': 'red'
+                };
+
+                const markerColor = categoryColors[point.category] || 'red';
+
+                const marker = L.marker([point.lat, point.lng], {
+                    icon: L.divIcon({
+                        className: 'custom-marker',
+                        html: `<div style="
+                            background-color: ${markerColor};
+                            width: 24px;
+                            height: 24px;
+                            border-radius: 50%;
+                            border: 2px solid white;
+                            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-weight: bold;
+                            font-size: 12px;
+                        "><i class="bi bi-lightbulb"></i></div>`,
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    })
+                })
+                .addTo(map)
+                .bindPopup(`
+                    <div style="max-width: 300px;">
+                        <h6>${point.title}</h6>
+                        <p class="small">${point.description.substring(0, 100)}...</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge" style="background-color: ${markerColor}">${point.category}</span>
+                            <a href="/point/${point.id}" class="btn btn-sm btn-primary">Подробнее</a>
+                        </div>
+                    </div>
+                `);
+
+                marker.pointData = point;
+                markers.push(marker);
+            });
+        })
+        .catch(error => console.error('Error loading points:', error));
+}
+
+function filterMarkers() {
+    markers.forEach(marker => {
+        if (currentCategory === 'all' || marker.pointData.category === currentCategory) {
+            map.addLayer(marker);
+        } else {
+            map.removeLayer(marker);
+        }
+    });
+}
+
+// Инициализируем карту при загрузке страницы
+document.addEventListener('DOMContentLoaded', initMap);
+</script>
+{% endblock %}
