@@ -115,8 +115,8 @@
 {% endblock %}
 
 {% block scripts %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Используем Яндекс.Карты вместо OpenStreetMap -->
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let pointMap;
@@ -125,14 +125,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let defaultLng = 83.0;
     let defaultZoom = 12;
 
-    // Инициализация карты с координатами по умолчанию
     initMap(defaultLat, defaultLng, defaultZoom);
 
-    // Обновление карты при выборе города
     document.getElementById('city_id').addEventListener('change', function() {
         const cityId = this.value;
         if (cityId) {
-            // Загружаем данные о городе
             fetch('/api/cities')
                 .then(response => response.json())
                 .then(cities => {
@@ -146,57 +143,68 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function initMap(lat, lng, zoom) {
-        // Удаляем старую карту если есть
+        // Уничтожаем старую карту если есть
         if (pointMap) {
-            pointMap.remove();
+            pointMap.destroy();
         }
 
-        // Создаем новую карту
-        pointMap = L.map('point-map').setView([lat, lng], zoom);
+        // Создаем новую карту Яндекс
+        ymaps.ready(function() {
+            pointMap = new ymaps.Map('point-map', {
+                center: [lat, lng],
+                zoom: zoom,
+                controls: ['zoomControl', 'fullscreenControl']
+            });
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(pointMap);
+            document.getElementById('latitude').value = lat.toFixed(6);
+            document.getElementById('longitude').value = lng.toFixed(6);
 
-        // Устанавливаем начальные координаты
-        document.getElementById('latitude').value = lat.toFixed(6);
-        document.getElementById('longitude').value = lng.toFixed(6);
+            // Добавляем маркер
+            marker = new ymaps.Placemark([lat, lng], {
+                balloonContent: 'Место вашей идеи'
+            }, {
+                draggable: true,
+                preset: 'islands#blueCircleDotIcon'
+            });
 
-        // Добавляем начальный маркер
-        marker = L.marker([lat, lng], {
-            draggable: true
-        }).addTo(pointMap)
-        .bindPopup('Место вашей идеи')
-        .openPopup();
+            pointMap.geoObjects.add(marker);
 
-        // Обновляем координаты при перетаскивании маркера
-        marker.on('dragend', function(e) {
-            const position = marker.getLatLng();
-            document.getElementById('latitude').value = position.lat.toFixed(6);
-            document.getElementById('longitude').value = position.lng.toFixed(6);
-        });
+            // Обновляем координаты при перетаскивании маркера
+            marker.events.add('dragend', function(e) {
+                const position = marker.geometry.getCoordinates();
+                document.getElementById('latitude').value = position[0].toFixed(6);
+                document.getElementById('longitude').value = position[1].toFixed(6);
+            });
 
-        // Обновляем координаты при клике на карту
-        pointMap.on('click', function(e) {
-            const position = e.latlng;
+            // Обновляем координаты при клике на карту
+            pointMap.events.add('click', function(e) {
+                const position = e.get('coords');
 
-            document.getElementById('latitude').value = position.lat.toFixed(6);
-            document.getElementById('longitude').value = position.lng.toFixed(6);
+                document.getElementById('latitude').value = position[0].toFixed(6);
+                document.getElementById('longitude').value = position[1].toFixed(6);
 
-            if (marker) {
-                pointMap.removeLayer(marker);
-            }
+                // Удаляем старый маркер
+                pointMap.geoObjects.remove(marker);
 
-            marker = L.marker([position.lat, position.lng], {
-                draggable: true
-            }).addTo(pointMap)
-            .bindPopup('Место вашей идеи')
-            .openPopup();
+                // Создаем новый маркер
+                marker = new ymaps.Placemark(position, {
+                    balloonContent: 'Место вашей идеи'
+                }, {
+                    draggable: true,
+                    preset: 'islands#blueCircleDotIcon'
+                });
 
-            marker.on('dragend', function(e) {
-                const newPosition = marker.getLatLng();
-                document.getElementById('latitude').value = newPosition.lat.toFixed(6);
-                document.getElementById('longitude').value = newPosition.lng.toFixed(6);
+                pointMap.geoObjects.add(marker);
+
+                // Добавляем обработчик перетаскивания
+                marker.events.add('dragend', function(e) {
+                    const newPosition = marker.geometry.getCoordinates();
+                    document.getElementById('latitude').value = newPosition[0].toFixed(6);
+                    document.getElementById('longitude').value = newPosition[1].toFixed(6);
+                });
+
+                // Открываем балун
+                marker.balloon.open();
             });
         });
     }

@@ -234,90 +234,80 @@
 {% endblock %}
 
 {% block scripts %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+<!-- Используем Яндекс.Карты вместо OpenStreetMap -->
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
 <script>
-// Инициализация карты
 document.addEventListener('DOMContentLoaded', function() {
-    // Данные точки из шаблона
     const pointData = JSON.parse('{{ point_data|safe }}'.replace(/&#34;/g, '"'));
 
-    // Карта для детальной страницы
-    const detailMap = L.map('detail-map').setView([pointData.latitude, pointData.longitude], 16);
+    // Инициализация Яндекс.Карт для детальной страницы
+    ymaps.ready(function() {
+        const detailMap = new ymaps.Map('detail-map', {
+            center: [pointData.latitude, pointData.longitude],
+            zoom: 16
+        });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(detailMap);
+        // Убираем ненужные элементы управления
+        detailMap.controls.remove('geolocationControl');
+        detailMap.controls.remove('trafficControl');
+        detailMap.controls.remove('typeSelector');
 
-    // Добавляем маркер
-    const marker = L.marker([pointData.latitude, pointData.longitude])
-        .addTo(detailMap)
-        .bindPopup(pointData.title)
-        .openPopup();
-});
-
-// Голосование
-document.querySelectorAll('.vote-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const isAuthenticated = {{ 'true' if current_user.is_authenticated else 'false' }};
-        if (!isAuthenticated) {
-            alert('Войдите, чтобы голосовать');
-            return;
-        }
-
-        const pointId = this.dataset.pointId;
-        const voteType = this.dataset.voteType;
-
-        fetch(`/vote/${pointId}/${voteType}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
+        // Добавляем маркер
+        const marker = new ymaps.Placemark(
+            [pointData.latitude, pointData.longitude],
+            {
+                balloonContent: pointData.title
+            },
+            {
+                preset: 'islands#blueCircleDotIcon'
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('votes-up').textContent = data.votes_up;
-            document.getElementById('votes-down').textContent = data.votes_down;
+        );
 
-            // Обновляем активные кнопки
-            document.querySelectorAll('.vote-btn').forEach(b => {
-                b.classList.remove('active');
+        detailMap.geoObjects.add(marker);
+        marker.balloon.open();
+    });
+
+    // Голосование
+    document.querySelectorAll('.vote-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const isAuthenticated = {{ 'true' if current_user.is_authenticated else 'false' }};
+            if (!isAuthenticated) {
+                alert('Войдите, чтобы голосовать');
+                return;
+            }
+
+            const pointId = this.dataset.pointId;
+            const voteType = this.dataset.voteType;
+
+            fetch(`/vote/${pointId}/${voteType}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('votes-up').textContent = data.votes_up;
+                document.getElementById('votes-down').textContent = data.votes_down;
+
+                document.querySelectorAll('.vote-btn').forEach(b => {
+                    b.classList.remove('active');
+                });
+
+                if (this.classList.contains('active')) {
+                    this.classList.remove('active');
+                } else {
+                    this.classList.add('active');
+                    const oppositeType = voteType === 'upvote' ? 'downvote' : 'upvote';
+                    document.querySelector(`.vote-btn[data-vote-type="${oppositeType}"]`).classList.remove('active');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ошибка при голосовании');
             });
-
-            // Определяем, какой голос сейчас у пользователя
-            if (this.classList.contains('active')) {
-                // Если кликнули на активную кнопку - снимаем голос
-                this.classList.remove('active');
-            } else {
-                // Если кликнули на неактивную - делаем её активной
-                this.classList.add('active');
-                // Снимаем активность с противоположной кнопки
-                const oppositeType = voteType === 'upvote' ? 'downvote' : 'upvote';
-                document.querySelector(`.vote-btn[data-vote-type="${oppositeType}"]`).classList.remove('active');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Ошибка при голосовании');
         });
     });
 });
 </script>
-
-<style>
-.vote-btn.active {
-    background-color: #2c3e50;
-    color: white;
-}
-
-#detail-map {
-    border-radius: 4px;
-}
-
-.progress-bar {
-    font-size: 14px;
-    line-height: 25px;
-}
-</style>
 {% endblock %}
