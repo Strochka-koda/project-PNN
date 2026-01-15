@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-plus-circle"></i> Добавить новую идею</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="city_id" class="form-label">Выберите город *</label>
+                                <select class="form-select" id="city_id" name="city_id" required>
+                                    <option value="">Выберите город...</option>
+                                    {% for city in cities %}
+                                    <option value="{{ city.id }}">{{ city.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Название идеи *</label>
+                                <input type="text" class="form-control" id="title" name="title"
+                                       placeholder="Например: Скейт-парк в парке им. Кирова" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Подробное описание *</label>
+                                <textarea class="form-control" id="description" name="description"
+                                          rows="5" placeholder="Опишите вашу идею подробно..." required></textarea>
+                                <div class="form-text">Опишите проблему и ваше предложение по её решению</div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="category" class="form-label">Категория *</label>
+                                    <select class="form-select" id="category" name="category" required>
+                                        <option value="">Выберите категорию</option>
+                                        {% for category in categories %}
+                                        <option value="{{ category }}">{{ category }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="address" class="form-label">Адрес места</label>
+                                    <input type="text" class="form-control" id="address" name="address"
+                                           placeholder="Улица, дом, ориентиры...">
+                                    <div class="form-text">Укажите точный адрес, если возможно</div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="images" class="form-label">Изображения (опционально)</label>
+                                <input class="form-control" type="file" id="images" name="images"
+                                       multiple accept="image/*">
+                                <div class="form-text">Можно загрузить несколько файлов. Максимальный размер: 16MB</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Выберите место на карте</h6>
+                                </div>
+                                <div class="card-body p-2">
+                                    <div id="point-map" style="height: 300px; margin-bottom: 15px;"></div>
+                                    <div class="mb-2">
+                                        <label for="latitude" class="form-label small">Широта *</label>
+                                        <input type="number" step="any" class="form-control form-control-sm"
+                                               id="latitude" name="latitude" required readonly>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="longitude" class="form-label small">Долгота *</label>
+                                        <input type="number" step="any" class="form-control form-control-sm"
+                                               id="longitude" name="longitude" required readonly>
+                                    </div>
+                                    <div class="form-text small">
+                                        Кликните на карте, чтобы указать местоположение.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-send"></i> Отправить предложение
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                            Отмена
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <h5><i class="bi bi-info-circle"></i> Правила добавления предложений</h5>
+                <ul class="mb-0">
+                    <li>Предложения должны быть конструктивными и направленными на улучшение городской среды</li>
+                    <li>Все предложения проходят модерацию перед публикацией</li>
+                    <li>Указывайте точное местоположение на карте</li>
+                    <li>Одно предложение - одна идея. Не объединяйте несколько идей в одном предложении</li>
+                    <li>Будьте вежливы и уважительны в описании</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Используем Яндекс.Карты вместо OpenStreetMap -->
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let pointMap;
+    let marker;
+    let defaultLat = 52.5;
+    let defaultLng = 83.0;
+    let defaultZoom = 12;
+
+    initMap(defaultLat, defaultLng, defaultZoom);
+
+    document.getElementById('city_id').addEventListener('change', function() {
+        const cityId = this.value;
+        if (cityId) {
+            fetch('/api/cities')
+                .then(response => response.json())
+                .then(cities => {
+                    const city = cities.find(c => c.id == cityId);
+                    if (city) {
+                        initMap(city.lat, city.lng, city.zoom);
+                    }
+                })
+                .catch(error => console.error('Error loading city data:', error));
+        }
+    });
+
+    function initMap(lat, lng, zoom) {
+        // Уничтожаем старую карту если есть
+        if (pointMap) {
+            pointMap.destroy();
+        }
+
+        // Создаем новую карту Яндекс
+        ymaps.ready(function() {
+            pointMap = new ymaps.Map('point-map', {
+                center: [lat, lng],
+                zoom: zoom,
+                controls: ['zoomControl', 'fullscreenControl']
+            });
+
+            document.getElementById('latitude').value = lat.toFixed(6);
+            document.getElementById('longitude').value = lng.toFixed(6);
+
+            // Добавляем маркер
+            marker = new ymaps.Placemark([lat, lng], {
+                balloonContent: 'Место вашей идеи'
+            }, {
+                draggable: true,
+                preset: 'islands#blueCircleDotIcon'
+            });
+
+            pointMap.geoObjects.add(marker);
+
+            // Обновляем координаты при перетаскивании маркера
+            marker.events.add('dragend', function(e) {
+                const position = marker.geometry.getCoordinates();
+                document.getElementById('latitude').value = position[0].toFixed(6);
+                document.getElementById('longitude').value = position[1].toFixed(6);
+            });
+
+            // Обновляем координаты при клике на карту
+            pointMap.events.add('click', function(e) {
+                const position = e.get('coords');
+
+                document.getElementById('latitude').value = position[0].toFixed(6);
+                document.getElementById('longitude').value = position[1].toFixed(6);
+
+                // Удаляем старый маркер
+                pointMap.geoObjects.remove(marker);
+
+                // Создаем новый маркер
+                marker = new ymaps.Placemark(position, {
+                    balloonContent: 'Место вашей идеи'
+                }, {
+                    draggable: true,
+                    preset: 'islands#blueCircleDotIcon'
+                });
+
+                pointMap.geoObjects.add(marker);
+
+                // Добавляем обработчик перетаскивания
+                marker.events.add('dragend', function(e) {
+                    const newPosition = marker.geometry.getCoordinates();
+                    document.getElementById('latitude').value = newPosition[0].toFixed(6);
+                    document.getElementById('longitude').value = newPosition[1].toFixed(6);
+                });
+
+                // Открываем балун
+                marker.balloon.open();
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

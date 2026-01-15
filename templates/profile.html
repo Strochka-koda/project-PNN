@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2><i class="bi bi-person-circle"></i> Мой профиль</h2>
+            <p class="text-muted">Здесь вы можете увидеть все ваши предложения и их статус</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('add_point') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Добавить новую идею
+            </a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Информация о пользователе</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th style="width: 40%">Имя пользователя:</th>
+                            <td>{{ current_user.username }}</td>
+                        </tr>
+                        <tr>
+                            <th>Email:</th>
+                            <td>{{ current_user.email }}</td>
+                        </tr>
+                        <tr>
+                            <th>Дата регистрации:</th>
+                            <td>{{ current_user.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h4>{{ user_points|length }}</h4>
+                            <p class="text-muted mb-0">Всего предложений</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статусная статистика -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body text-center">
+                    <h4>{{ user_points|selectattr('status', 'equalto', 'pending')|list|length }}</h4>
+                    <p class="mb-0">На рассмотрении</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <h4>{{ user_points|selectattr('status', 'equalto', 'approved')|list|length }}</h4>
+                    <p class="mb-0">Одобрено</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <h4>{{ user_points|selectattr('status', 'equalto', 'completed')|list|length }}</h4>
+                    <p class="mb-0">Завершено</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-secondary">
+                <div class="card-body text-center">
+                    <h4>{{ user_points|selectattr('status', 'equalto', 'rejected')|list|length }}</h4>
+                    <p class="mb-0">Отклонено</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подписки на города -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-bell"></i> Мои подписки на города</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for city in all_cities %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">{{ city.name }}</h6>
+                                    <small class="text-muted">{{ city.points|length }} предложений</small>
+                                </div>
+                                <form method="POST" action="{{ url_for('follow_city', city_id=city.id) }}" style="display: inline;">
+                                    {% if city in followed_cities %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        Отписаться
+                                    </button>
+                                    {% else %}
+                                    <button type="submit" class="btn btn-sm btn-outline-success">
+                                        Подписаться
+                                    </button>
+                                    {% endif %}
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица предложений пользователя -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Мои предложения</h5>
+        </div>
+        <div class="card-body">
+            {% if user_points %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Название</th>
+                            <th>Город</th>
+                            <th>Категория</th>
+                            <th>Дата создания</th>
+                            <th>Статус</th>
+                            <th>Голоса</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for point in user_points %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                <a href="{{ url_for('point_detail', point_id=point.id) }}">
+                                    {{ point.title|truncate(40) }}
+                                </a>
+                            </td>
+                            <td>{{ point.city.name }}</td>
+                            <td>
+                                <span class="badge bg-primary">{{ point.category }}</span>
+                            </td>
+                            <td>{{ point.created_at.strftime('%d.%m.%Y') }}</td>
+                            <td>
+                                {% if point.status == 'pending' %}
+                                <span class="badge bg-warning">На рассмотрении</span>
+                                {% elif point.status == 'approved' %}
+                                <span class="badge bg-success">Одобрено</span>
+                                {% elif point.status == 'completed' %}
+                                <span class="badge bg-info">Завершено</span>
+                                {% elif point.status == 'rejected' %}
+                                <span class="badge bg-danger">Отклонено</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="text-success">
+                                    <i class="bi bi-hand-thumbs-up"></i> {{ point.votes|selectattr('vote_type', 'equalto', 'upvote')|list|length }}
+                                </span>
+                                <span class="text-muted"> / </span>
+                                <span class="text-danger">
+                                    <i class="bi bi-hand-thumbs-down"></i> {{ point.votes|selectattr('vote_type', 'equalto', 'downvote')|list|length }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('point_detail', point_id=point.id) }}"
+                                   class="btn btn-sm btn-outline-primary" title="Просмотреть">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-lightbulb display-1 text-muted"></i>
+                <h4 class="mt-3">У вас еще нет предложений</h4>
+                <p class="text-muted">Предложите свою первую идею для улучшения города!</p>
+                <a href="{{ url_for('add_point') }}" class="btn btn-primary btn-lg mt-2">
+                    <i class="bi bi-plus-circle"></i> Создать первое предложение
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
