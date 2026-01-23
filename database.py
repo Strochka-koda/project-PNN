@@ -11,7 +11,7 @@ def init_db():
         db.create_all()
         logger.info("Database tables created successfully")
 
-        # Создаем администратора если его нет
+        # дминистратор
         admin = User.query.filter_by(email='admin@altai.ru').first()
         if not admin:
             admin = User(

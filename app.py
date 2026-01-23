@@ -15,9 +15,9 @@ app.config.from_object(Config)
 
 # Инициализация БД
 db.init_app(app)
-with app.app_context():
-    init_db()
-    add_default_cities()
+# with app.app_context():
+#     init_db()
+#     add_default_cities()
 
 # Инициализация Flask-Login
 login_manager = LoginManager()
@@ -28,17 +28,11 @@ login_manager.login_view = 'login'
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
-
-
-# Создаем папку для загрузок если её нет
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
-
-# Создаем фильтр escapejs для шаблонов
 @app.template_filter('escapejs')
 def escapejs_filter(s):
     """Экранирование строк для JavaScript"""
@@ -179,8 +173,6 @@ def register():
 
             hashed_password = generate_password_hash(password)
             user = User(username=username, email=email, password=hashed_password)
-
-            # Подписываем на все активные города по умолчанию
             active_cities = City.query.filter_by(is_active=True).all()
             user.followed_cities = active_cities
 
@@ -318,9 +310,6 @@ def add_point():
     return render_template('add_point.html',
                            cities=cities,
                            categories=categories)
-
-
-# Детальная страница предложения
 @app.route('/point/<int:point_id>')
 def point_detail(point_id):
     try:
@@ -335,16 +324,12 @@ def point_detail(point_id):
                 user_vote = vote.vote_type
 
         comments = Comment.query.filter_by(point_id=point_id).order_by(Comment.created_at.desc()).all()
-
-        # Похожие предложения в том же городе
         similar_points = CityPoint.query.filter(
             CityPoint.city_id == point.city_id,
             CityPoint.category == point.category,
             CityPoint.id != point_id,
             CityPoint.status == 'approved'
         ).limit(5).all()
-
-        # Преобразуем данные для передачи в JavaScript
         point_data = {
             'id': point.id,
             'title': point.title,
@@ -491,8 +476,6 @@ def admin_cities():
 
             db.session.add(city)
             db.session.commit()
-
-            # Подписываем всех пользователей на новый город
             users = User.query.all()
             for user in users:
                 user.followed_cities.append(city)
@@ -507,9 +490,6 @@ def admin_cities():
 
     cities = City.query.all()
     return render_template('admin_cities.html', cities=cities)
-
-
-# Обновление статуса города
 @app.route('/admin/city/<int:city_id>/toggle', methods=['POST'])
 @login_required
 def toggle_city(city_id):
@@ -529,9 +509,6 @@ def toggle_city(city_id):
         app.logger.error(f"Error in toggle_city route: {str(e)}")
         db.session.rollback()
         return jsonify({'error': 'Internal server error'}), 500
-
-
-# Обновление статуса предложения
 @app.route('/admin/update_status/<int:point_id>', methods=['POST'])
 @login_required
 def update_status(point_id):
@@ -552,6 +529,97 @@ def update_status(point_id):
         app.logger.error(f"Error in update_status route: {str(e)}")
         db.session.rollback()
         return jsonify({'error': 'Internal server error'}), 500
+@app.route('/edit_point/<int:point_id>', methods=['GET', 'POST'])
+@login_required
+def edit_point(point_id):
+    point = CityPoint.query.get_or_404(point_id)
+    if point.user_id != current_user.id:
+        flash('Вы можете редактировать только свои предложения')
+        return redirect(url_for('point_detail', point_id=point_id))
+
+    if point.status != 'pending':
+        flash('Редактирование возможно только для предложений, ожидающих модерации')
+        return redirect(url_for('point_detail', point_id=point_id))
+
+    if request.method == 'POST':
+        try:
+            point.title = request.form.get('title')
+            point.description = request.form.get('description')
+            point.category = request.form.get('category')
+            point.address = request.form.get('address', '')
+            point.latitude = float(request.form.get('latitude'))
+            point.longitude = float(request.form.get('longitude'))
+            if request.form.get('delete_images'):
+                delete_ids = request.form.get('delete_images').split(',')
+                for img_id in delete_ids:
+                    if img_id:
+                        image = PointImage.query.get(int(img_id))
+                        if image:
+                            try:
+                                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], image.filename))
+                            except:
+                                pass
+                            db.session.delete(image)
+            if 'images' in request.files:
+                files = request.files.getlist('images')
+                for file in files:
+                    if file and allowed_file(file.filename):
+                        filename = secure_filename(f"{datetime.now().timestamp()}_{file.filename}")
+                        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                        file.save(filepath)
+
+                        point_image = PointImage(filename=filename, point_id=point.id)
+                        db.session.add(point_image)
+
+            db.session.commit()
+            flash('Предложение успешно обновлено!')
+            return redirect(url_for('point_detail', point_id=point_id))
+
+        except Exception as e:
+            app.logger.error(f"Error editing point: {str(e)}")
+            db.session.rollback()
+            flash('Произошла ошибка при обновлении предложения')
+
+    cities = City.query.filter_by(is_active=True).all()
+    categories = ['спорт', 'культура', 'детский досуг', 'экология', 'транспорт', 'благоустройство', 'безопасность']
+
+    return render_template('edit_point.html',
+                           point=point,
+                           cities=cities,
+                           categories=categories)
+
+@app.route('/delete_point/<int:point_id>', methods=['POST'])
+@login_required
+def delete_point(point_id):
+    point = CityPoint.query.get_or_404(point_id)
+
+    if point.user_id != current_user.id:
+        flash('Вы можете удалять только свои предложения')
+        return redirect(url_for('point_detail', point_id=point_id))
+
+    if point.status != 'pending':
+        flash('Удаление возможно только для предложений, ожидающих модерации')
+        return redirect(url_for('point_detail', point_id=point_id))
+
+    try:
+        for image in point.images:
+            try:
+                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], image.filename))
+            except:
+                pass
+        Vote.query.filter_by(point_id=point_id).delete()
+        Comment.query.filter_by(point_id=point_id).delete()
+        db.session.delete(point)
+        db.session.commit()
+
+        flash('Предложение успешно удалено!')
+        return redirect(url_for('profile'))
+
+    except Exception as e:
+        app.logger.error(f"Error deleting point: {str(e)}")
+        db.session.rollback()
+        flash('Произошла ошибка при удалении предложения')
+        return redirect(url_for('point_detail', point_id=point_id))
 
 
 # Игра Змейка

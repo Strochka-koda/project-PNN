@@ -12,7 +12,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="bi bi-geo-alt"></i> Алтайский край - Идеи для городов
+                <i class="bi bi-geo-alt"></i> - Идеи для городов
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -92,5 +92,25 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     {% block scripts %}{% endblock %}
+{% if current_user.is_authenticated %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (!localStorage.getItem('edit_notice_shown')) {
+        const hasPendingPoints = {{ 'true' if current_user.proposals|selectattr('status', 'equalto', 'pending')|list|length > 0 else 'false' }};
+        if (hasPendingPoints) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-info alert-dismissible fade show mt-3';
+            alertDiv.innerHTML = `
+                <i class="bi bi-info-circle"></i>
+                <strong>Новая возможность!</strong> Теперь вы можете редактировать свои предложения до модерации.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.container.mt-4').prepend(alertDiv);
+            localStorage.setItem('edit_notice_shown', 'true');
+        }
+    }
+});
+</script>
+{% endif %}
 </body>
 </html>

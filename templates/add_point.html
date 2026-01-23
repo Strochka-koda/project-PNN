@@ -115,7 +115,7 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- Используем Яндекс.Карты вместо OpenStreetMap -->
+
 <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -143,12 +143,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function initMap(lat, lng, zoom) {
-        // Уничтожаем старую карту если есть
+
         if (pointMap) {
             pointMap.destroy();
         }
 
-        // Создаем новую карту Яндекс
+
         ymaps.ready(function() {
             pointMap = new ymaps.Map('point-map', {
                 center: [lat, lng],
@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('latitude').value = lat.toFixed(6);
             document.getElementById('longitude').value = lng.toFixed(6);
 
-            // Добавляем маркер
+
             marker = new ymaps.Placemark([lat, lng], {
                 balloonContent: 'Место вашей идеи'
             }, {
@@ -169,24 +169,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
             pointMap.geoObjects.add(marker);
 
-            // Обновляем координаты при перетаскивании маркера
+
             marker.events.add('dragend', function(e) {
                 const position = marker.geometry.getCoordinates();
                 document.getElementById('latitude').value = position[0].toFixed(6);
                 document.getElementById('longitude').value = position[1].toFixed(6);
             });
 
-            // Обновляем координаты при клике на карту
+
             pointMap.events.add('click', function(e) {
                 const position = e.get('coords');
 
                 document.getElementById('latitude').value = position[0].toFixed(6);
                 document.getElementById('longitude').value = position[1].toFixed(6);
 
-                // Удаляем старый маркер
+
                 pointMap.geoObjects.remove(marker);
 
-                // Создаем новый маркер
+
                 marker = new ymaps.Placemark(position, {
                     balloonContent: 'Место вашей идеи'
                 }, {
@@ -196,14 +196,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 pointMap.geoObjects.add(marker);
 
-                // Добавляем обработчик перетаскивания
+
                 marker.events.add('dragend', function(e) {
                     const newPosition = marker.geometry.getCoordinates();
                     document.getElementById('latitude').value = newPosition[0].toFixed(6);
                     document.getElementById('longitude').value = newPosition[1].toFixed(6);
                 });
 
-                // Открываем балун
+
                 marker.balloon.open();
             });
         });

@@ -11,7 +11,6 @@
     </nav>
 
     <div class="row">
-        <!-- Основная информация -->
         <div class="col-lg-8">
             <div class="card mb-4">
                 <div class="card-body">
@@ -66,7 +65,6 @@
                     </div>
                     {% endif %}
 
-                    <!-- Галерея изображений -->
                     {% if point.images %}
                     <div class="mb-4">
                         <h5>Приложенные изображения</h5>
@@ -85,19 +83,44 @@
                     </div>
                     {% endif %}
 
-                    <!-- Информация об авторе -->
+                    <!--об авторе -->
                     <div class="card bg-light">
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6">
                                     <p class="mb-1"><strong>Автор:</strong> {{ point.author.username }}</p>
                                     <p class="mb-1"><strong>Дата создания:</strong> {{ point.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+                                    {% if point.status == 'pending' and current_user.id == point.user_id %}
+                                    <p class="mb-0">
+                                        <span class="badge bg-warning">
+                                            <i class="bi bi-pencil"></i> Редактирование доступно
+                                        </span>
+                                    </p>
+                                    {% endif %}
                                 </div>
                                 <div class="col-md-6">
                                     <p class="mb-1"><strong>Местоположение:</strong></p>
                                     <p class="mb-0">Широта: {{ "%.6f"|format(point.latitude) }}, Долгота: {{ "%.6f"|format(point.longitude) }}</p>
                                 </div>
                             </div>
+
+                            <!-- Кнопки действий -->
+                            {% if current_user.id == point.user_id and point.status == 'pending' %}
+                            <div class="mt-3 pt-3 border-top">
+                                <div class="btn-group">
+                                    <a href="{{ url_for('edit_point', point_id=point.id) }}" class="btn btn-warning btn-sm">
+                                        <i class="bi bi-pencil"></i> Редактировать предложение
+                                    </a>
+                                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deletePointModal">
+                                        <i class="bi bi-trash"></i> Удалить
+                                    </button>
+                                </div>
+                                <p class="small text-muted mt-2 mb-0">
+                                    <i class="bi bi-info-circle"></i>
+                                    Редактирование и удаление доступны только до модерации
+                                </p>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -153,7 +176,6 @@
             </div>
         </div>
 
-        <!-- Боковая панель -->
         <div class="col-lg-4">
             <!-- Карта -->
             <div class="card mb-4">
@@ -165,7 +187,7 @@
                 </div>
             </div>
 
-            <!-- Информация о голосовании -->
+            <!--голосованиЕ -->
             <div class="card mb-4">
                 <div class="card-header">
                     <h6 class="mb-0">Статистика голосования</h6>
@@ -204,7 +226,6 @@
                 </div>
             </div>
 
-            <!-- Похожие предложения -->
             {% if similar_points %}
             <div class="card">
                 <div class="card-header">
@@ -231,43 +252,59 @@
         </div>
     </div>
 </div>
+
+<!--удаление -->
+{% if current_user.id == point.user_id and point.status == 'pending' %}
+<div class="modal fade" id="deletePointModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Удаление предложения</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить предложение <strong>"{{ point.title }}"</strong>?</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Внимание!</strong> Это действие невозможно отменить.
+                </div>
+                <ul class="small text-muted">
+                    <li>Будут удалены все приложенные изображения</li>
+                    <li>Будут удалены все комментарии к этому предложению</li>
+                    <li>Будут удалены все голоса за это предложение</li>
+                    <li>Предложение исчезнет из системы</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form method="POST" action="{{ url_for('delete_point', point_id=point.id) }}">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Удалить предложение
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
-<!-- Используем Яндекс.Карты вместо OpenStreetMap -->
-<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const pointData = JSON.parse('{{ point_data|safe }}'.replace(/&#34;/g, '"'));
+    const detailMap = L.map('detail-map').setView([pointData.latitude, pointData.longitude], 16);
 
-    // Инициализация Яндекс.Карт для детальной страницы
-    ymaps.ready(function() {
-        const detailMap = new ymaps.Map('detail-map', {
-            center: [pointData.latitude, pointData.longitude],
-            zoom: 16
-        });
-
-        // Убираем ненужные элементы управления
-        detailMap.controls.remove('geolocationControl');
-        detailMap.controls.remove('trafficControl');
-        detailMap.controls.remove('typeSelector');
-
-        // Добавляем маркер
-        const marker = new ymaps.Placemark(
-            [pointData.latitude, pointData.longitude],
-            {
-                balloonContent: pointData.title
-            },
-            {
-                preset: 'islands#blueCircleDotIcon'
-            }
-        );
-
-        detailMap.geoObjects.add(marker);
-        marker.balloon.open();
-    });
-
-    // Голосование
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(detailMap);
+    const marker = L.marker([pointData.latitude, pointData.longitude])
+        .addTo(detailMap)
+        .bindPopup(pointData.title)
+        .openPopup();
     document.querySelectorAll('.vote-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const isAuthenticated = {{ 'true' if current_user.is_authenticated else 'false' }};
@@ -308,6 +345,83 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+
+    const editButtons = document.querySelectorAll('a[href*="edit_point"]');
+    editButtons.forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.classList.add('shadow');
+        });
+        btn.addEventListener('mouseleave', function() {
+            this.classList.remove('shadow');
+        });
+    });
+
+    const deleteForm = document.querySelector('form[action*="delete_point"]');
+    if (deleteForm) {
+        deleteForm.addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Удаление...';
+            submitBtn.disabled = true;
+        });
+    }
 });
 </script>
+
+<style>
+.vote-btn.active {
+    background-color: #2c3e50;
+    color: white;
+}
+
+#detail-map {
+    border-radius: 4px;
+}
+
+.progress-bar {
+    font-size: 14px;
+    line-height: 25px;
+}
+
+/* Анимации */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.pulse-animation {
+    animation: pulse 2s infinite;
+}
+
+/* Стили для кнопок редактирования */
+.btn-warning {
+    transition: all 0.3s ease;
+}
+
+.btn-warning:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+}
+
+/* Стили для статусов */
+.badge.bg-warning {
+    animation: pulse 2s infinite;
+}
+
+@media (max-width: 768px) {
+    .btn-group {
+        flex-wrap: wrap;
+    }
+
+    .btn-group .btn {
+        margin-bottom: 5px;
+        flex: 1;
+        min-width: 120px;
+    }
+
+    #detail-map {
+        height: 250px;
+    }
+}
+</style>
 {% endblock %}

@@ -3,8 +3,6 @@ from flask_login import UserMixin
 from datetime import datetime
 
 db = SQLAlchemy()
-
-# Связующая таблица для пользователей и городов
 user_cities = db.Table('user_cities',
                        db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
                        db.Column('city_id', db.Integer, db.ForeignKey('city.id'), primary_key=True)

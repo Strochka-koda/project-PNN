@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-warning text-white">
+                <h4 class="mb-0"><i class="bi bi-pencil"></i> Редактирование идеи</h4>
+                <small class="opacity-75">Вы можете редактировать предложение только до модерации</small>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Название идеи *</label>
+                                <input type="text" class="form-control" id="title" name="title"
+                                       value="{{ point.title }}" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Подробное описание *</label>
+                                <textarea class="form-control" id="description" name="description"
+                                          rows="5" required>{{ point.description }}</textarea>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="category" class="form-label">Категория *</label>
+                                    <select class="form-select" id="category" name="category" required>
+                                        <option value="">Выберите категорию</option>
+                                        {% for category in categories %}
+                                        <option value="{{ category }}" {% if point.category == category %}selected{% endif %}>
+                                            {{ category }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="address" class="form-label">Адрес места</label>
+                                    <input type="text" class="form-control" id="address" name="address"
+                                           value="{{ point.address or '' }}">
+                                </div>
+                            </div>
+
+                            {% if point.images %}
+                            <div class="mb-4">
+                                <h6>Текущие изображения:</h6>
+                                <div class="row g-2 mb-3" id="existing-images">
+                                    {% for image in point.images %}
+                                    <div class="col-md-3 col-sm-4">
+                                        <div class="card">
+                                            <img src="{{ url_for('uploaded_file', filename=image.filename) }}"
+                                                 class="card-img-top" alt="Изображение" style="height: 100px; object-fit: cover;">
+                                            <div class="card-body p-2 text-center">
+                                                <button type="button" class="btn btn-sm btn-danger delete-image-btn"
+                                                        data-image-id="{{ image.id }}">
+                                                    <i class="bi bi-trash"></i> Удалить
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <input type="hidden" id="delete_images" name="delete_images">
+                            </div>
+                            {% endif %}
+
+                            <div class="mb-3">
+                                <label for="images" class="form-label">Добавить новые изображения</label>
+                                <input class="form-control" type="file" id="images" name="images"
+                                       multiple accept="image/*">
+                                <div class="form-text">Можно загрузить несколько файлов. Максимальный размер: 16MB</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Местоположение на карте</h6>
+                                </div>
+                                <div class="card-body p-2">
+                                    <div id="point-map" style="height: 300px; margin-bottom: 15px;"></div>
+                                    <div class="mb-2">
+                                        <label for="latitude" class="form-label small">Широта *</label>
+                                        <input type="number" step="any" class="form-control form-control-sm"
+                                               id="latitude" name="latitude" value="{{ point.latitude }}" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="longitude" class="form-label small">Долгота *</label>
+                                        <input type="number" step="any" class="form-control form-control-sm"
+                                               id="longitude" name="longitude" value="{{ point.longitude }}" required>
+                                    </div>
+                                    <div class="form-text small">
+                                        Кликните на карте, чтобы изменить местоположение.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card mt-3">
+                                <div class="card-body">
+                                    <h6>Информация о предложении:</h6>
+                                    <ul class="list-unstyled small">
+                                        <li><strong>Город:</strong> {{ point.city.name }}</li>
+                                        <li><strong>Статус:</strong>
+                                            <span class="badge bg-warning">На рассмотрении</span>
+                                        </li>
+                                        <li><strong>Дата создания:</strong> {{ point.created_at.strftime('%d.%m.%Y %H:%M') }}</li>
+                                        <li><strong>Изменения:</strong> Доступны только до модерации</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Сохранить изменения
+                        </button>
+                        <a href="{{ url_for('point_detail', point_id=point.id) }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Отмена
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Кнопка удаления -->
+        <div class="card mt-3 border-danger">
+            <div class="card-body text-center">
+                <h5 class="text-danger"><i class="bi bi-exclamation-triangle"></i> Опасная зона</h5>
+                <p class="text-muted">Удаление предложения необратимо. Это действие доступно только до модерации.</p>
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="bi bi-trash"></i> Удалить предложение
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!--подтверждения удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Подтверждение удаления</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить предложение <strong>"{{ point.title }}"</strong>?</p>
+                <p class="text-danger"><i class="bi bi-exclamation-triangle"></i> Это действие невозможно отменить!</p>
+                <ul class="small text-muted">
+                    <li>Будут удалены все изображения</li>
+                    <li>Будут удалены все комментарии и голоса</li>
+                    <li>Предложение исчезнет из системы</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form method="POST" action="{{ url_for('delete_point', point_id=point.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let pointMap;
+    let marker;
+    let deletedImages = [];
+
+    initMap({{ point.latitude }}, {{ point.longitude }}, {{ point.city.zoom_level }});
+
+    function initMap(lat, lng, zoom) {
+        if (pointMap) {
+            pointMap.remove();
+        }
+
+        pointMap = L.map('point-map').setView([lat, lng], zoom);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(pointMap);
+
+        marker = L.marker([lat, lng], {
+            draggable: true
+        }).addTo(pointMap)
+        .bindPopup('Место вашей идеи')
+        .openPopup();
+
+        marker.on('dragend', function(e) {
+            const position = marker.getLatLng();
+            document.getElementById('latitude').value = position.lat.toFixed(6);
+            document.getElementById('longitude').value = position.lng.toFixed(6);
+        });
+
+        pointMap.on('click', function(e) {
+            const position = e.latlng;
+
+            document.getElementById('latitude').value = position.lat.toFixed(6);
+            document.getElementById('longitude').value = position.lng.toFixed(6);
+
+            if (marker) {
+                pointMap.removeLayer(marker);
+            }
+
+            marker = L.marker([position.lat, position.lng], {
+                draggable: true
+            }).addTo(pointMap)
+            .bindPopup('Место вашей идеи')
+            .openPopup();
+
+            marker.on('dragend', function(e) {
+                const newPosition = marker.getLatLng();
+                document.getElementById('latitude').value = newPosition.lat.toFixed(6);
+                document.getElementById('longitude').value = newPosition.lng.toFixed(6);
+            });
+        });
+    }
+
+    // Управление удалением изображений
+    document.querySelectorAll('.delete-image-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const imageId = this.dataset.imageId;
+            const imageCard = this.closest('.col-md-3');
+
+            if (!deletedImages.includes(imageId)) {
+                deletedImages.push(imageId);
+                imageCard.classList.add('opacity-50');
+                this.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Восстановить';
+                this.classList.remove('btn-danger');
+                this.classList.add('btn-success');
+            } else {
+                const index = deletedImages.indexOf(imageId);
+                if (index > -1) {
+                    deletedImages.splice(index, 1);
+                }
+                imageCard.classList.remove('opacity-50');
+                this.innerHTML = '<i class="bi bi-trash"></i> Удалить';
+                this.classList.remove('btn-success');
+                this.classList.add('btn-danger');
+            }
+
+            document.getElementById('delete_images').value = deletedImages.join(',');
+        });
+    });
+
+    //отправки формы
+    document.querySelector('form').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && e.target.type !== 'textarea') {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

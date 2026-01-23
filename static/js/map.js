@@ -1,17 +1,11 @@
-// Инициализация карты Рубцовска с использованием OpenLayers
 let map;
 let vectorSource;
 let markers = [];
 let currentCategory = 'all';
 
 function initMap() {
-    // Координаты центра Рубцовска (в системе EPSG:4326)
-    const rubtsovskCenter = [81.2061, 51.5147]; // OpenLayers: [lon, lat]
-
-    // Создаем источник векторных данных
+    const rubtsovskCenter = [81.2061, 51.5147];
     vectorSource = new ol.source.Vector();
-
-    // Создаем слой для маркеров
     const vectorLayer = new ol.layer.Vector({
         source: vectorSource,
         style: function(feature) {
@@ -24,8 +18,6 @@ function initMap() {
             });
         }
     });
-
-    // Создаем карту
     map = new ol.Map({
         target: 'map',
         layers: [
@@ -39,14 +31,8 @@ function initMap() {
             zoom: 13
         })
     });
-
-    // Скрываем атрибуцию OSM (включая флаг)
     hideOSMAttribution();
-
-    // Загружаем точки с сервера
     loadPoints();
-
-    // Добавляем обработчики для фильтров категорий
     document.querySelectorAll('.category-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
@@ -58,7 +44,6 @@ function initMap() {
 }
 
 function hideOSMAttribution() {
-    // Скрываем атрибуцию OpenStreetMap
     setTimeout(() => {
         const attribution = document.querySelector('.ol-attribution');
         if (attribution) {
@@ -71,24 +56,16 @@ function loadPoints() {
     fetch('/api/points')
         .then(response => response.json())
         .then(points => {
-            // Очищаем старые маркеры
             vectorSource.clear();
             markers = [];
-
-            // Добавляем новые маркеры
             points.forEach(point => {
-                // Создаем геометрию точки
                 const feature = new ol.Feature({
                     geometry: new ol.geom.Point(
                         ol.proj.fromLonLat([point.lng, point.lat])
                     ),
                     data: point
                 });
-
-                // Настраиваем стиль маркера
                 feature.setStyle(createMarkerStyle(point.category));
-
-                // Добавляем обработчик клика
                 feature.on('click', function(evt) {
                     showPopup(point);
                 });
@@ -121,7 +98,7 @@ function createMarkerStyle(category) {
             })
         }),
         text: new ol.style.Text({
-            text: '📍', // Можно использовать эмоджи или иконки
+            text: '📍',
             font: '18px Arial',
             fill: new ol.style.Fill({ color: color }),
             offsetY: -15
@@ -130,7 +107,6 @@ function createMarkerStyle(category) {
 }
 
 function showPopup(point) {
-    // Создаем popup элемент
     const popup = document.createElement('div');
     popup.className = 'ol-popup';
     popup.innerHTML = `
@@ -144,7 +120,6 @@ function showPopup(point) {
         </div>
     `;
 
-    // Показываем popup (можно использовать стороннюю библиотеку для popup)
     alert(`Точка: ${point.title}\nКатегория: ${point.category}\nОписание: ${point.description.substring(0, 50)}...`);
 }
 
@@ -154,10 +129,8 @@ function filterMarkers() {
         if (currentCategory === 'all' || point.category === currentCategory) {
             feature.setStyle(createMarkerStyle(point.category));
         } else {
-            feature.setStyle(null); // Скрыть маркер
+            feature.setStyle(null);
         }
     });
 }
-
-// Инициализируем карту при загрузке страницы
 document.addEventListener('DOMContentLoaded', initMap);

@@ -24,8 +24,6 @@
                     <div id="game-container">
                         <canvas id="game-canvas" width="600" height="400"></canvas>
                     </div>
-                    
-                    <!-- Мобильные кнопки управления (только на мобильных) -->
                     <div class="mobile-controls d-none d-md-block">
                         <div class="row justify-content-center">
                             <div class="col-4"></div>
@@ -149,7 +147,6 @@
                                 </tr>
                             </thead>
                             <tbody id="leaderboard">
-                                <!-- Данные загружаются через JavaScript -->
                             </tbody>
                         </table>
                     </div>
@@ -166,7 +163,7 @@
 
 {% block scripts %}
 <script>
-// Игра Змейка
+// Змейка
 document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
@@ -175,8 +172,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const levelElement = document.getElementById('level');
     const restartBtn = document.getElementById('restart-btn');
     const leaderboardElement = document.getElementById('leaderboard');
-    
-    // Параметры игры
     const gridSize = 20;
     const gridWidth = canvas.width / gridSize;
     const gridHeight = canvas.height / gridSize;
@@ -191,8 +186,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let level = 1;
     let gameRunning = true;
     let gameLoop;
-    
-    // Инициализация игры
     function initGame() {
         snake = [
             {x: 10, y: 10},
@@ -213,8 +206,6 @@ document.addEventListener('DOMContentLoaded', function() {
         updateLevel();
         loadLeaderboard();
     }
-    
-    // Генерация еды
     function generateFood() {
         let foodOnSnake;
         do {
@@ -223,8 +214,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 x: Math.floor(Math.random() * gridWidth),
                 y: Math.floor(Math.random() * gridHeight)
             };
-            
-            // Проверяем, не появилась ли еда на змейке
+
             for (let segment of snake) {
                 if (segment.x === food.x && segment.y === food.y) {
                     foodOnSnake = true;
@@ -233,14 +223,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } while (foodOnSnake);
     }
-    
-    // Отрисовка игры
     function draw() {
-        // Очистка canvas
         ctx.fillStyle = '#1a1a2e';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Отрисовка сетки
+
         ctx.strokeStyle = '#16213e';
         ctx.lineWidth = 0.5;
         for (let x = 0; x < canvas.width; x += gridSize) {
@@ -255,15 +241,10 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.lineTo(canvas.width, y);
             ctx.stroke();
         }
-        
-        // Отрисовка змейки
         snake.forEach((segment, index) => {
             if (index === 0) {
-                // Голова змейки
                 ctx.fillStyle = '#4CAF50';
                 ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
-                
-                // Глаза
                 ctx.fillStyle = '#000';
                 let eyeSize = gridSize / 5;
                 let eyeOffset = gridSize / 3;
@@ -290,25 +271,18 @@ document.addEventListener('DOMContentLoaded', function() {
                                 segment.y * gridSize + gridSize - eyeOffset, eyeSize, eyeSize);
                 }
             } else {
-                // Тело змейки
                 ctx.fillStyle = '#8BC34A';
                 ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
-                
-                // Градиент для тела
                 ctx.fillStyle = '#7CB342';
                 ctx.fillRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
             }
         });
-        
-        // Отрисовка еды
         ctx.fillStyle = '#FF5252';
         ctx.beginPath();
         ctx.arc(food.x * gridSize + gridSize/2, 
                 food.y * gridSize + gridSize/2, 
                 gridSize/2 - 2, 0, Math.PI * 2);
         ctx.fill();
-        
-        // Эффект свечения для еды
         ctx.fillStyle = 'rgba(255, 82, 82, 0.3)';
         ctx.beginPath();
         ctx.arc(food.x * gridSize + gridSize/2, 
@@ -316,14 +290,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 gridSize/2, 0, Math.PI * 2);
         ctx.fill();
     }
-    
-    // Обновление игры
     function update() {
         if (!gameRunning) return;
         
         direction = nextDirection;
-        
-        // Двигаем голову
         let head = {...snake[0]};
         
         switch(direction) {
@@ -340,68 +310,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 head.x++;
                 break;
         }
-        
-        // Проверка столкновения со стенами
         if (head.x < 0 || head.x >= gridWidth || head.y < 0 || head.y >= gridHeight) {
             gameOver();
             return;
         }
-        
-        // Проверка столкновения с собой
         for (let segment of snake) {
             if (head.x === segment.x && head.y === segment.y) {
                 gameOver();
                 return;
             }
         }
-        
-        // Добавляем новую голову
         snake.unshift(head);
-        
-        // Проверка съедения еды
         if (head.x === food.x && head.y === food.y) {
-            score += level; // Зависит от уровня
+            score += level;
             if (score > highScore) {
                 highScore = score;
                 localStorage.setItem('snakeHighScore', highScore);
                 updateHighScore();
                 saveToLeaderboard();
             }
-            
-            // Повышение уровня каждые 5 очков
             let newLevel = Math.floor(score / 5) + 1;
             if (newLevel > level) {
                 level = newLevel;
-                gameSpeed = Math.max(50, 150 - (level - 1) * 10); // Увеличиваем скорость
+                gameSpeed = Math.max(50, 150 - (level - 1) * 10);
                 updateLevel();
             }
-            
             generateFood();
             updateScore();
         } else {
-            // Удаляем хвост, если не съели еду
             snake.pop();
         }
     }
-    
-    // Игровой цикл
     function gameStep() {
         update();
         draw();
     }
-    
-    // Запуск игры
     function startGame() {
         if (gameLoop) clearInterval(gameLoop);
         gameLoop = setInterval(gameStep, gameSpeed);
     }
-    
-    // Конец игры
     function gameOver() {
         gameRunning = false;
         clearInterval(gameLoop);
-        
-        // Анимация проигрыша
         ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
@@ -419,23 +369,15 @@ document.addEventListener('DOMContentLoaded', function() {
         
         saveToLeaderboard();
     }
-    
-    // Обновление счета
     function updateScore() {
         scoreElement.textContent = score;
     }
-    
-    // Обновление лучшего счета
     function updateHighScore() {
         highScoreElement.textContent = highScore;
     }
-    
-    // Обновление уровня
     function updateLevel() {
         levelElement.textContent = level;
     }
-    
-    // Сохранение в таблицу рекордов
     function saveToLeaderboard() {
         let leaderboard = JSON.parse(localStorage.getItem('snakeLeaderboard') || '[]');
         
@@ -447,18 +389,12 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         leaderboard.push(record);
-        
-        // Сортируем по убыванию счета
         leaderboard.sort((a, b) => b.score - a.score);
-        
-        // Оставляем только топ-10
         leaderboard = leaderboard.slice(0, 10);
         
         localStorage.setItem('snakeLeaderboard', JSON.stringify(leaderboard));
         loadLeaderboard();
     }
-    
-    // Загрузка таблицы рекордов
     function loadLeaderboard() {
         let leaderboard = JSON.parse(localStorage.getItem('snakeLeaderboard') || '[]');
         
@@ -484,8 +420,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td>${record.level}</td>
                 <td>${record.date}</td>
             `;
-            
-            // Выделяем текущего пользователя
             if (record.player === '{{ current_user.username if current_user.is_authenticated else "Гость" }}') {
                 row.classList.add('table-primary');
             }
@@ -493,8 +427,6 @@ document.addEventListener('DOMContentLoaded', function() {
             leaderboardElement.appendChild(row);
         });
     }
-    
-    // Управление с клавиатуры
     document.addEventListener('keydown', function(e) {
         switch(e.key) {
             case 'ArrowUp':
@@ -522,7 +454,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 break;
             case ' ':
-                // Пауза/продолжение
                 if (gameRunning) {
                     gameRunning = false;
                     clearInterval(gameLoop);
@@ -542,8 +473,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
         }
     });
-    
-    // Мобильное управление
     document.querySelector('.mobile-up')?.addEventListener('click', () => {
         if (direction !== 'down') nextDirection = 'up';
     });
@@ -556,14 +485,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('.mobile-right')?.addEventListener('click', () => {
         if (direction !== 'left') nextDirection = 'right';
     });
-    
-    // Кнопка перезапуска
     restartBtn.addEventListener('click', function() {
         initGame();
         startGame();
     });
-    
-    // Адаптация для мобильных устройств
     function checkMobile() {
         const mobileControls = document.querySelector('.mobile-controls');
         if (window.innerWidth <= 768) {
@@ -574,14 +499,10 @@ document.addEventListener('DOMContentLoaded', function() {
             mobileControls.classList.add('d-none');
         }
     }
-    
-    // Инициализация
     initGame();
     startGame();
     loadLeaderboard();
     checkMobile();
-    
-    // Проверка при изменении размера окна
     window.addEventListener('resize', checkMobile);
 });
 </script>

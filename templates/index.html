@@ -7,7 +7,7 @@
         <div class="card mb-3">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0">
-                    <i class="bi bi-geo-alt"></i> Города Алтайского края
+                    <i class="bi bi-geo-alt"></i> Города Идей
                 </h5>
             </div>
             <div class="card-body p-0">
@@ -46,7 +46,6 @@
         </div>
     </div>
 
-    <!-- Основной контент -->
     <div class="col-md-9">
         {% if current_city %}
         <div class="card mb-3">
@@ -174,7 +173,6 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- Используем Яндекс.Карты вместо OpenStreetMap -->
 <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=ваш_api_ключ" type="text/javascript"></script>
 <script>
 let map;
@@ -185,14 +183,12 @@ function initMap() {
     {% if current_city %}
     const cityCenter = [{{ current_city.latitude }}, {{ current_city.longitude }}];
 
-    // Инициализация Яндекс.Карт
     ymaps.ready(function() {
         map = new ymaps.Map('map', {
             center: cityCenter,
             zoom: {{ current_city.zoom_level }}
         });
 
-        // Убираем ненужные элементы управления
         map.controls.remove('geolocationControl');
         map.controls.remove('trafficControl');
         map.controls.remove('typeSelector');
@@ -215,11 +211,9 @@ function loadPoints(cityId) {
     fetch(`/api/points/${cityId}`)
         .then(response => response.json())
         .then(points => {
-            // Очищаем старые маркеры
             markers.forEach(marker => map.geoObjects.remove(marker));
             markers = [];
 
-            // Добавляем новые метки
             points.forEach(point => {
                 const marker = new ymaps.Placemark(
                     [point.lat, point.lng],

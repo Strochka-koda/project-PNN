@@ -9,7 +9,7 @@
         </div>
         <div class="col-md-4 text-end">
             <a href="{{ url_for('add_point') }}" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Добавить новую идею
+                <i class="bi bi-plus-circle"></i> Добавить идею
             </a>
         </div>
     </div>
@@ -48,7 +48,7 @@
         </div>
     </div>
 
-    <!-- Статусная статистика -->
+    <!-- статус -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-white bg-warning">
@@ -120,7 +120,29 @@
         </div>
     </div>
 
-    <!-- Таблица предложений пользователя -->
+    {% if city_stats %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Ваша активность по городам</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for stat in city_stats %}
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h6 class="mb-1">{{ stat.name }}</h6>
+                            <div class="display-6 text-primary">{{ stat.count }}</div>
+                            <small class="text-muted">предложений</small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="card">
         <div class="card-header">
             <h5 class="mb-0">Мои предложения</h5>
@@ -176,16 +198,71 @@
                                 </span>
                             </td>
                             <td>
-                                <a href="{{ url_for('point_detail', point_id=point.id) }}"
-                                   class="btn btn-sm btn-outline-primary" title="Просмотреть">
-                                    <i class="bi bi-eye"></i>
-                                </a>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('point_detail', point_id=point.id) }}"
+                                       class="btn btn-outline-primary" title="Просмотреть">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% if point.status == 'pending' %}
+                                    <a href="{{ url_for('edit_point', point_id=point.id) }}"
+                                       class="btn btn-outline-warning" title="Редактировать">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger"
+                                            data-bs-toggle="modal" data-bs-target="#deleteModal{{ point.id }}"
+                                            title="Удалить">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+
+                                {% if point.status == 'pending' %}
+                                <div class="modal fade" id="deleteModal{{ point.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title">Удаление предложения</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Вы уверены, что хотите удалить предложение <strong>"{{ point.title }}"</strong>?</p>
+                                                <p class="text-danger small">
+                                                    <i class="bi bi-exclamation-triangle"></i>
+                                                    Удаление доступно только для предложений, ожидающих модерации.
+                                                    После удаления восстановить предложение будет невозможно.
+                                                </p>
+                                                <ul class="small text-muted">
+                                                    <li>Будут удалены все прикрепленные изображения</li>
+                                                    <li>Будут удалены все комментарии к предложению</li>
+                                                    <li>Будут удалены все голоса за предложение</li>
+                                                </ul>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                <form method="POST" action="{{ url_for('delete_point', point_id=point.id) }}">
+                                                    <button type="submit" class="btn btn-danger">Удалить</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+
+            {% if user_points|selectattr('status', 'equalto', 'pending')|list|length > 0 %}
+            <div class="alert alert-info mt-3 fade-in">
+                <i class="bi bi-info-circle"></i>
+                <strong>Важно!</strong> Вы можете редактировать и удалять только те предложения,
+                которые имеют статус "На рассмотрении". После модерации администратором редактирование
+                будет недоступно.
+            </div>
+            {% endif %}
+
             {% else %}
             <div class="text-center py-5">
                 <i class="bi bi-lightbulb display-1 text-muted"></i>
@@ -198,5 +275,126 @@
             {% endif %}
         </div>
     </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-question-circle"></i> Что можно сделать в профиле?</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li>Просматривать все свои предложения</li>
+                        <li>Редактировать предложения до модерации</li>
+                        <li>Управлять подписками на города</li>
+                        <li>Отслеживать статус своих предложений</li>
+                        <li>Видеть статистику по голосам</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-clock-history"></i> Статусы предложений</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><span class="badge bg-warning">На рассмотрении</span> - ожидает проверки администратором</li>
+                        <li><span class="badge bg-success">Одобрено</span> - опубликовано на карте</li>
+                        <li><span class="badge bg-info">Завершено</span> - идея реализована</li>
+                        <li><span class="badge bg-danger">Отклонено</span> - не прошло модерацию</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modals = document.querySelectorAll('.modal.show');
+            modals.forEach(modal => {
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            });
+        }
+    });
+
+    document.querySelectorAll('form[action*="/delete_point/"]').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const pointId = this.action.split('/delete_point/')[1];
+            const pointTitle = this.closest('.modal-content').querySelector('strong').textContent;
+
+            if (confirm(`Вы точно хотите удалить предложение "${pointTitle}"? Это действие невозможно отменить!`)) {
+                this.submit();
+            }
+        });
+    });
+
+    if (!localStorage.getItem('edit_feature_notice_shown')) {
+        const pendingCount = {{ user_points|selectattr('status', 'equalto', 'pending')|list|length }};
+        if (pendingCount > 0) {
+            setTimeout(() => {
+                const toast = document.createElement('div');
+                toast.className = 'toast align-items-center text-white bg-info border-0 position-fixed bottom-0 end-0 m-3';
+                toast.style.zIndex = '1060';
+                toast.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="bi bi-pencil me-2"></i>
+                            <strong>Новая возможность!</strong> Теперь вы можете редактировать свои предложения до модерации.
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+
+                const toastInstance = new bootstrap.Toast(toast);
+                toastInstance.show();
+
+                toast.addEventListener('hidden.bs.toast', function () {
+                    document.body.removeChild(toast);
+                });
+
+                localStorage.setItem('edit_feature_notice_shown', 'true');
+            }, 1000);
+        }
+    }
+});
+</script>
+
+<style>
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.toast {
+    max-width: 350px;
+}
+
+.badge {
+    font-weight: 500;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+</style>
 {% endblock %}
